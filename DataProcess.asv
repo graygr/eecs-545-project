@@ -1,4 +1,0 @@
-% File Created 3/9/2022
-% Purpose: Read video file, preprocess it
-% - Pass binary classification filter over it
-% - Dilate pixels
