@@ -40,6 +40,8 @@ def main():
             features += extract(contours)
             if i%100 == 0:
                 print('frame ', i)
+            if i==3000:
+                break
 
     vr.release()
 
