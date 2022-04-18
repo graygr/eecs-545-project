@@ -1,9 +1,14 @@
 from features import *
 from sklearn.mixture import GaussianMixture
 
+import pickle
+
 fpath = "AMOS2019-master/assets/data/simple-bg.mp4"
 
 def main():
+
+    features = []
+
     vr = cv2.VideoCapture(fpath)
     if not vr.isOpened():
         raise Exception("Error opening video stream or file")
@@ -32,21 +37,23 @@ def main():
             contours, hierarchy = cv2.findContours(c_frame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             
             # Extract features from contours
-            features = extract(contours)
+            features += extract(contours)
+            if i%100 == 0:
+                print('frame ', i)
 
-            classifier = GaussianMixture(n_components=2, max_iter=10000, covariance_type='full')
-            classifier.fit(features)
-
-            y_hat = classifier.predict(features)
-            print(y_hat)
-            raise
-
-        # drawBBox(contours, c_frame)
-        # Freeze until any key pressed. Quit on pressing q
-        # if cv2.waitKey(0) & 0xFF == ord('q'):
-        #     break
     vr.release()
-    cv2.destroyAllWindows()
+
+    classifier = GaussianMixture(n_components=2, max_iter=10000, covariance_type='full')
+    print('fitting')
+    classifier.fit(features)
+
+    with open('./pickle/gmm.pkl', 'wb') as f:
+        pickle.dump(classifier, f)
+
+    # print('classifying')
+    # y_hat = classifier.predict(features)
+    # print(y_hat.size)
+    # raise
 
 
 if __name__ == '__main__':
