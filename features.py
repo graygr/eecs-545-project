@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 
 num_frames = 10
-fpath = "AMOS2019-master/assets/data/simple-bg.mp4"
+fpath = "AMOS2019-master/assets/data/complex-fg.mp4"
 
 # Helper function to create a fused frame
 # Combines frames from index in back n_frames
@@ -22,7 +22,7 @@ def avgContoursArea(contours):
     return mean_area
 
 # Draw classification boxes around outliers
-def drawBoundingBoxes(contours, c_frame, features):
+def drawBoundingBoxes(contours, c_frame, features, w_vid, video_writer):
     # Compute mean features
     # mean_area = avgContoursArea(contours)
     m_features = np.zeros((4,2))
@@ -53,27 +53,32 @@ def drawBoundingBoxes(contours, c_frame, features):
         if classify(m_features, features[i], 0):
             cv2.rectangle(c_frame, (x-10,y-10), (x+10+w, y+10+h), (255, 0, 0), 2)
         i += 1
-    cv2.imshow('Frame', c_frame)
-    cv2.imwrite("media/im_with_keypoints_n_5_mean_thresh.png", c_frame)
 
+    # If we write out to video
+    if w_vid:
+        merge_frame = cv2.cvtColor(c_frame, cv2.COLOR_GRAY2BGR)
+        video_writer.write(merge_frame)
 
+    # cv2.imshow('Frame', c_frame)
+    # cv2.imwrite("media/im_with_keypoints_n_5_mean_thresh.png", c_frame)
 
 # Takes in mean feature vectors and computes distance from the mean
 # Returns 1 if far enough away, 0 if not
 # Third parameter is classification type
 
 def classify(m_features, feature, class_mode):
-    # Square error
+    # Square error with fixed margin
     if class_mode == 0:
         # Thresh
         # TODO: Tune this
-        # This thresh works for simple_bg, failes during vibration/movement though
+        # This thresh works for simple_bg, fails during vibration/movement though\
+        # Fails for all other more complex datasets
         err_thresh = 230
         # Squared distance
         err = 0
         # Iterate through features
         for i in range(len(feature)):
-            err += (m_features[i,0] - feature[i]) ** 2
+            err += (m_features[i, 0] - feature[i]) ** 2
         err /= len(feature)
 
         if err > err_thresh:
@@ -105,6 +110,15 @@ def extract(contours):
 
 def main():
     vr = cv2.VideoCapture(fpath)
+
+    # Control whether we write video or not
+    debug = True
+    write_video = True
+    fout_name = "complex_fg_mean_classifier.avi"
+    if write_video:
+        print("Writing result out to: " + fout_name)
+        vw = cv2.VideoWriter(fout_name, cv2.VideoWriter_fourcc(*'MPEG'), 60, (1920, 1080))
+
     if not vr.isOpened():
         raise Exception("Error opening video stream or file")
 
@@ -112,6 +126,11 @@ def main():
     f_frames = np.zeros((num_frames, 1080, 1920))
 
     while vr.isOpened():
+        if debug and i % 100 == 0:
+            print("On frame: " + str(i))
+            if i > 3000:
+                break
+
         c_frame = np.zeros((1080, 1920))
         # Store most recent frames
 
@@ -140,7 +159,7 @@ def main():
             features = extract(contours)
 
             # Classify and draw boxes around identified outliers
-            drawBoundingBoxes(contours, c_frame, features)
+            drawBoundingBoxes(contours, c_frame, features, write_video, vw)
 
         # print(len(features))
         # print(len(bboxes))
@@ -149,8 +168,10 @@ def main():
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     vr.release()
+    vw.release()
     cv2.destroyAllWindows()
 
+    print("Completed")
 
 if __name__ == '__main__':
     main() 
