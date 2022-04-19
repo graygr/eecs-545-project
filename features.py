@@ -51,7 +51,7 @@ def drawBoundingBoxes(contours, c_frame, features, w_vid, video_writer):
     i = 0
     for c in contours:
         (x,y,w,h) = cv2.boundingRect(c)
-        if classify(m_features, features[i], 0):
+        if classify(m_features, features[i], 1):
             cv2.rectangle(c_frame, (x-10,y-10), (x+10+w, y+10+h), (255, 0, 0), 2)
         i += 1
 
@@ -90,9 +90,10 @@ def classify(m_features, feature, class_mode):
 
     # Gaussian probability, use mean and variance too
     elif class_mode == 1:
-        with open('./pickle/model.pkl', 'rb') as f:
+        with open('./pickle/gmm.pkl', 'rb') as f:
             gmm = pickle.load(f)
-        return gmm.predict(feature)
+        _feature = np.array(feature)
+        return gmm.predict(_feature.reshape(1, -1))
 
 
 def extract(contours):
