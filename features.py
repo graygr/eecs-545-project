@@ -59,8 +59,8 @@ def drawBoundingBoxes(contours, c_frame, features, w_vid, video_writer):
         merge_frame = cv2.cvtColor(c_frame, cv2.COLOR_GRAY2BGR)
         video_writer.write(merge_frame)
 
-    # cv2.imshow('Frame', c_frame)
-    # cv2.imwrite("media/im_with_keypoints_n_5_mean_thresh.png", c_frame)
+    cv2.imshow('Frame', c_frame)
+    cv2.imwrite("media/im_with_keypoints_n_5_mean_thresh.png", c_frame)
 
 # Takes in mean feature vectors and computes distance from the mean
 # Returns 1 if far enough away, 0 if not
@@ -73,13 +73,16 @@ def classify(m_features, feature, class_mode):
         # TODO: Tune this
         # This thresh works for simple_bg, fails during vibration/movement though\
         # Fails for all other more complex datasets
-        err_thresh = 230
+        # err_thresh = 230 # simple_bg
+        err_thresh = 12000 # complex_bg
         # Squared distance
         err = 0
         # Iterate through features
         for i in range(len(feature)):
             err += (m_features[i, 0] - feature[i]) ** 2
         err /= len(feature)
+
+        print(err)
 
         if err > err_thresh:
             return True
@@ -113,11 +116,11 @@ def main():
 
     # Control whether we write video or not
     debug = True
-    write_video = True
+    write_video = False
     fout_name = "complex_fg_mean_classifier.avi"
     if write_video:
         print("Writing result out to: " + fout_name)
-        vw = cv2.VideoWriter(fout_name, cv2.VideoWriter_fourcc(*'MPEG'), 60, (1920, 1080))
+    vw = cv2.VideoWriter(fout_name, cv2.VideoWriter_fourcc(*'MPEG'), 60, (1920, 1080))
 
     if not vr.isOpened():
         raise Exception("Error opening video stream or file")
