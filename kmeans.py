@@ -69,6 +69,17 @@ def main():
             # add to final video frames
             new_frames.append(c_frame)
 
+            if i == 60: # skip to a good example and plot some clusters in lower dimensions
+                fig, ax = plt.subplots(figsize=(9, 6))
+                ax.scatter(features[:, 0], features[:, 1], c=kmeans.labels_, cmap='rainbow', s = 7)
+                ax.scatter(kmeans.cluster_centers_[:, 0], kmeans.cluster_centers_[:, 1], color='black', s = 70, alpha=0.30)
+                ax.set_title('simple-bg.mp4, frame 60')
+                ax.set_xlabel('area')
+                ax.set_ylabel('perimeter')
+                fig.show()
+
+
+
         else:
             vr.release()
 
@@ -79,6 +90,8 @@ def main():
     for i in range(len(new_frames)):
         out.write(cv2.cvtColor(new_frames[i], cv2.COLOR_GRAY2BGR))
     out.release()
+
+
 
  
 
