@@ -90,10 +90,11 @@ def classify(m_features, feature, class_mode):
 
     # Gaussian probability, use mean and variance too
     elif class_mode == 1:
-        with open('./pickle/gmm.pkl', 'rb') as f:
+        with open('./pickle/gmm_complex_fg.pkl', 'rb') as f:
             gmm = pickle.load(f)
         _feature = np.array(feature)
-        return gmm.predict(_feature.reshape(1, -1))
+        pred = gmm.predict(_feature.reshape(1, -1))
+        return 1-pred
 
 
 def extract(contours):
@@ -119,9 +120,10 @@ def main():
     vr = cv2.VideoCapture(fpath)
 
     # Control whether we write video or not
-    debug = True
+    debug = False
     write_video = False
-    fout_name = "complex_fg_mean_classifier.avi"
+    # fout_name = "complex_fg_mean_classifier.avi"
+    fout_name = "__.avi"
     if write_video:
         print("Writing result out to: " + fout_name)
     vw = cv2.VideoWriter(fout_name, cv2.VideoWriter_fourcc(*'MPEG'), 60, (1920, 1080))

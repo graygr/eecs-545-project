@@ -3,7 +3,7 @@ from sklearn.mixture import GaussianMixture
 
 import pickle
 
-fpath = "AMOS2019-master/assets/data/simple-bg.mp4"
+fpath = "AMOS2019-master/assets/data/complex-fg.mp4"
 
 def main():
 
@@ -19,7 +19,8 @@ def main():
         c_frame = np.zeros((1080, 1920))
         ret, frame_in = vr.read()
         i += 1
-
+        if i%5 != 0:
+            continue
         if ret:
             f_frames[i % num_frames] = cv2.cvtColor(frame_in, cv2.COLOR_RGB2GRAY)
             ret, f_frames[i % num_frames] = cv2.threshold(f_frames[i % num_frames], 1, 255, cv2.THRESH_BINARY)
@@ -40,7 +41,7 @@ def main():
             features += extract(contours)
             if i%100 == 0:
                 print('frame ', i)
-            if i==3000:
+            if i==800:
                 break
 
     vr.release()
@@ -49,9 +50,10 @@ def main():
     print('fitting')
     classifier.fit(features)
 
-    with open('./pickle/gmm.pkl', 'wb') as f:
+    with open('./pickle/gmm_complex_fg.pkl', 'wb') as f:
         pickle.dump(classifier, f)
-
+    with open('./pickle/feature_complex_fg.pkl', 'wb') as f:
+        pickle.dump(features, f)
     # print('classifying')
     # y_hat = classifier.predict(features)
     # print(y_hat.size)
