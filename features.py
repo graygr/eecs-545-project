@@ -3,6 +3,7 @@
 
 import cv2
 import numpy as np
+import pickle
 
 num_frames = 10
 fpath = "AMOS2019-master/assets/data/complex-fg.mp4"
@@ -86,7 +87,9 @@ def classify(m_features, feature, class_mode):
 
     # Gaussian probability, use mean and variance too
     elif class_mode == 1:
-        pass
+        with open('./pickle/model.pkl', 'rb') as f:
+            gmm = pickle.load(f)
+        return gmm.predict(feature)
 
 
 def extract(contours):
