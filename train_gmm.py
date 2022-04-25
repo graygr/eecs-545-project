@@ -3,7 +3,7 @@ from sklearn.mixture import GaussianMixture
 
 import pickle
 
-fpath = "AMOS2019-master/assets/data/complex-fg.mp4"
+fpath = "AMOS2019-master/assets/data/simple-fg.mp4"
 
 def main():
 
@@ -19,8 +19,6 @@ def main():
         c_frame = np.zeros((1080, 1920))
         ret, frame_in = vr.read()
         i += 1
-        if i%5 != 0:
-            continue
         if ret:
             f_frames[i % num_frames] = cv2.cvtColor(frame_in, cv2.COLOR_RGB2GRAY)
             ret, f_frames[i % num_frames] = cv2.threshold(f_frames[i % num_frames], 1, 255, cv2.THRESH_BINARY)
@@ -41,8 +39,8 @@ def main():
             features += extract(contours)
             if i%100 == 0:
                 print('frame ', i)
-            if i==800:
-                break
+        else:
+            break
 
     vr.release()
 
@@ -50,9 +48,9 @@ def main():
     print('fitting')
     classifier.fit(features)
 
-    with open('./pickle/gmm_complex_fg.pkl', 'wb') as f:
+    with open('./pickle/gmm_simple_fg.pkl', 'wb') as f:
         pickle.dump(classifier, f)
-    with open('./pickle/feature_complex_fg.pkl', 'wb') as f:
+    with open('./pickle/simple_fg_features.pkl', 'wb') as f:
         pickle.dump(features, f)
     # print('classifying')
     # y_hat = classifier.predict(features)
@@ -63,3 +61,14 @@ def main():
 if __name__ == '__main__':
     main() 
 
+# features = np.array(features)
+    # print(features.shape)
+    # preds = gmm.predict(features)
+    # fig, ax = plt.subplots(figsize=(9, 6))
+    # ax.scatter(features[:, 0], features[:, 1], c=preds, cmap='rainbow', s = 18)
+    # ax.set_title('simple-fg.mp4, frame 80')
+    # ax.set_xlabel('area')
+    # ax.set_ylabel('perimeter')
+    # fig.savefig('test.png')
+    # cv2.imwrite("test2.png", c_frame)
+    # break
