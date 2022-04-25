@@ -4,6 +4,7 @@
 import cv2
 import numpy as np
 import pickle
+import csv
 
 from sklearn.mixture import GaussianMixture
 
@@ -16,6 +17,36 @@ classifier_type = 'gmm'
 # Combines frames from index in back n_frames
 # Returns a fused frame from starting index, going back n_frames
 
+
+# Helper function to read in groundtruth data files
+def read_gt_files():
+    sfg_r = csv.reader(open("groundtruth-files/simple-fg-gt.csv"))
+    sbg_r = csv.reader(open("groundtruth-files/simple-bg-gt.csv"))
+    cfg_r = csv.reader(open("groundtruth-files/complex-fg-gt.csv"))
+    cbg_r = csv.reader(open("groundtruth-files/complex-bg-gt.csv"))
+
+    # Read in array. [0] is frame no., [1] is total objects, [2] is debris
+    # Throw away headers
+    _ = next(sfg_r)
+    _ = next(sbg_r)
+    _ = next(cfg_r)
+    _ = next(cbg_r)
+
+    sfg_gt = []
+    sbg_gt = []
+    cfg_gt = []
+    cbg_gt = []
+
+    for row in sfg_r:
+        sfg_gt.append(row)
+    for row in sbg_r:
+        sbg_gt.append(row)
+    for row in cfg_r:
+        cfg_gt.append(row)
+    for row in cbg_r:
+        cbg_gt.append(row)
+
+    return sfg_gt, sbg_gt, cfg_gt, cbg_gt
 
 # Helper function to compute the average area of all detected contours in the image
 def avgContoursArea(contours):
@@ -207,4 +238,4 @@ def main():
     print("Completed")
 
 if __name__ == '__main__':
-    main() 
+    main()
