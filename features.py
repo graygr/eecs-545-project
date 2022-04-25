@@ -5,8 +5,12 @@ import cv2
 import numpy as np
 import pickle
 
+from sklearn.mixture import GaussianMixture
+
 num_frames = 10
 fpath = "AMOS2019-master/assets/data/complex-fg.mp4"
+fname = 'complex-fg.mp4'
+classifier_type = 'gmm'
 
 # Helper function to create a fused frame
 # Combines frames from index in back n_frames
@@ -26,6 +30,14 @@ def avgContoursArea(contours):
 def drawBoundingBoxes(contours, c_frame, features, w_vid, video_writer):
     # Compute mean features
     # mean_area = avgContoursArea(contours)
+
+    classifier = None
+
+    if classifier_type == 'gmm':
+        with open('./pickle/gmm_complex_fg.pkl', 'rb') as f:
+                classifier = pickle.load(f)
+        
+
     m_features = np.zeros((4,2))
 
     # Compute means
@@ -51,7 +63,7 @@ def drawBoundingBoxes(contours, c_frame, features, w_vid, video_writer):
     i = 0
     for c in contours:
         (x,y,w,h) = cv2.boundingRect(c)
-        if classify(m_features, features[i], 1):
+        if classify(m_features, features[i], classifier):
             cv2.rectangle(c_frame, (x-10,y-10), (x+10+w, y+10+h), (255, 0, 0), 2)
         i += 1
 
@@ -67,9 +79,9 @@ def drawBoundingBoxes(contours, c_frame, features, w_vid, video_writer):
 # Returns 1 if far enough away, 0 if not
 # Third parameter is classification type
 
-def classify(m_features, feature, class_mode):
+def classify(m_features, feature, classifier):
     # Square error with fixed margin
-    if class_mode == 0:
+    if classifier_type == 'naive':
         # Thresh
         # TODO: Tune this
         # This thresh works for simple_bg, fails during vibration/movement though\
@@ -89,12 +101,11 @@ def classify(m_features, feature, class_mode):
             return True
 
     # Gaussian probability, use mean and variance too
-    elif class_mode == 1:
-        with open('./pickle/gmm_complex_fg.pkl', 'rb') as f:
-            gmm = pickle.load(f)
+    elif classifier_type == 'gmm':
+        
         _feature = np.array(feature)
-        pred = gmm.predict(_feature.reshape(1, -1))
-        return 1-pred
+        pred = classifier.predict(_feature.reshape(1, -1))
+        return pred
 
 
 def extract(contours):
@@ -114,6 +125,22 @@ def extract(contours):
 
         features.append([area, perimeter, circularity, min_cir_area])
     return features
+
+def kFold(k):
+    if classifier_type == 'gmm':
+        classifier = GaussianMixture(n_components=2, max_iter=10000, covariance_type='full')
+        features = None
+        if(fname == 'complex-fg.mp4'):
+            with open('./pickle/complex_fg_features.pkl', 'rb') as f:
+                features = pickle.load(f)
+        N = len(features)
+        idxs = np.arange(N)
+        np.random.shuffle(idxs)
+        B = N // k
+        for i in range(k):
+            test_slice, remainder = np.split(features.copy(), B, axis=0)
+            classifier.fit(remainder)
+            y_hat = classifier.predict(test_slice)
 
 
 def main():
@@ -170,9 +197,6 @@ def main():
             # Classify and draw boxes around identified outliers
             drawBoundingBoxes(contours, c_frame, features, write_video, vw)
 
-        # print(len(features))
-        # print(len(bboxes))
-        # drawBBox(contours, c_frame)
         # Freeze until any key pressed. Quit on pressing q
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
