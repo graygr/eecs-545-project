@@ -11,12 +11,10 @@ from sklearn.mixture import GaussianMixture
 
 num_frames = 5
 fname = "simple-bg"
+classifier_type = 'gmm'
 
 fpath = "AMOS2019-master/assets/data/" + fname + ".mp4"
 fout_name = fname + ".avi"
-
-# Classifier choice parameter
-classifier_type = 'gmm'
 
 # GT file paths
 gt_fpath = "groundtruth-files/" + fname + "-gt.csv"
@@ -219,7 +217,7 @@ def main():
     # Read in gt
     gt_stats = read_gt(gt_fpath)
 
-    kFold(10, gt_stats)
+    # kFold(10, gt_stats)
 
     while vr.isOpened():
         if debug and i % 10 == 0:
