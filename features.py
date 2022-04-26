@@ -10,22 +10,20 @@ import matplotlib.pyplot as plt
 from sklearn.mixture import GaussianMixture
 
 num_frames = 5
-fpath = "AMOS2019-master/assets/data/simple-bg.mp4"
-# fpath = "AMOS2019-master/assets/data/simple-fg.mp4"
-# fpath = "AMOS2019-master/assets/data/complex-bg.mp4"
-# fpath = "AMOS2019-master/assets/data/complex-fg.mp4"
+fname = "simple-bg"
 
-# Video out filename
-fname = '.mp4'
+fpath = "AMOS2019-master/assets/data/" + fname + ".mp4"
+fout_name = fname + ".avi"
 
 # Classifier choice parameter
 classifier_type = 'gmm'
 
 # GT file paths
-sfg_p = "groundtruth-files/simple-fg-gt.csv"
-sbg_p = "groundtruth-files/simple-bg-gt.csv"
-cfg_p = "groundtruth-files/complex-fg-gt.csv"
-cbg_p = "groundtruth-files/complex-bg-gt.csv"
+gt_fpath = "groundtruth-files/" + fname + "-gt.csv"
+# sfg_p = "groundtruth-files/simple-fg-gt.csv"
+# sbg_p = "groundtruth-files/simple-bg-gt.csv"
+# cfg_p = "groundtruth-files/complex-fg-gt.csv"
+# cbg_p = "groundtruth-files/complex-bg-gt.csv"
 
 # Helper function to create a fused frame
 # Combines frames from index in back n_frames
@@ -179,9 +177,8 @@ def kFold(k, gt_stats):
     if classifier_type == 'gmm':
         classifier = GaussianMixture(n_components=2, max_iter=10000, covariance_type='full')
         features = None
-        if fpath == "AMOS2019-master/assets/data/simple-bg.mp4":
-            with open('./pickle/simple_bg_features.pkl', 'rb') as f:
-                features = pickle.load(f)
+        with open('./pickle/' +fname[:-3] + '_' + fname[-2:]+'_features.pkl', 'rb') as f:
+            features = pickle.load(f)
         N = len(features)
         print(N)
         raise
@@ -202,11 +199,9 @@ def main():
     # Control whether we write video or not
     debug = True
     write_video = False
-    # fout_name = "complex_fg_mean_classifier.avi"
-    fout_name = "__.avi"
     if write_video:
         print("Writing result out to: " + fout_name)
-    vw = cv2.VideoWriter(fout_name, cv2.VideoWriter_fourcc(*'MPEG'), 60, (1920, 1080))
+        vw = cv2.VideoWriter(fout_name, cv2.VideoWriter_fourcc(*'MPEG'), 60, (1920, 1080))
 
     if not vr.isOpened():
         raise Exception("Error opening video stream or file")
@@ -222,7 +217,9 @@ def main():
     # Track classification statistics to evaluate performance
     class_stats = []
     # Read in gt
-    gt_stats = read_gt(sbg_p)
+    gt_stats = read_gt(gt_fpath)
+
+    kFold(10, gt_stats)
 
     while vr.isOpened():
         if debug and i % 10 == 0:
