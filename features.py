@@ -16,7 +16,7 @@ fpath = "AMOS2019-master/assets/data/simple-bg.mp4"
 # fpath = "AMOS2019-master/assets/data/complex-fg.mp4"
 
 # Video out filename
-fname = 'complex-fg.mp4'
+fname = '.mp4'
 
 # Classifier choice parameter
 classifier_type = 'gmm'
@@ -80,7 +80,7 @@ def drawBoundingBoxes(contours, c_frame, features, w_vid, video_writer):
 
     if classifier_type == 'gmm':
         with open('./pickle/gmm_complex_fg.pkl', 'rb') as f:
-                classifier = pickle.load(f)
+            classifier = pickle.load(f)
 
     m_features = np.zeros((4,2))
 
@@ -175,21 +175,25 @@ def extract(contours):
         features.append([area, perimeter, circularity, min_cir_area])
     return features
 
-def kFold(k):
+def kFold(k, gt_stats):
     if classifier_type == 'gmm':
         classifier = GaussianMixture(n_components=2, max_iter=10000, covariance_type='full')
         features = None
-        if(fname == 'complex-fg.mp4'):
-            with open('./pickle/complex_fg_features.pkl', 'rb') as f:
+        if fpath == "AMOS2019-master/assets/data/simple-bg.mp4":
+            with open('./pickle/simple_bg_features.pkl', 'rb') as f:
                 features = pickle.load(f)
         N = len(features)
-        idxs = np.arange(N)
-        np.random.shuffle(idxs)
+        print(N)
+        raise
+        idxs_shuffled = np.arange(N)
+        np.random.shuffle(idxs_shuffled)
         B = N // k
         for i in range(k):
-            test_slice, remainder = np.split(features.copy(), B, axis=0)
-            classifier.fit(remainder)
-            y_hat = classifier.predict(test_slice)
+            test_slice_idx = idxs_shuffled[i*B : (i+1)*B]
+            remainder_idx = idxs_shuffled[:i*B].append(idxs_shuffled[(i+1)*B])
+            classifier.fit(features[remainder_idx])
+            y_hat = classifier.predict(features[test_slice_idx])
+
 
 
 def main():
