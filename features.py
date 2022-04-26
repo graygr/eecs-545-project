@@ -5,13 +5,27 @@ import cv2
 import numpy as np
 import pickle
 import csv
+import matplotlib.pyplot as plt
 
 from sklearn.mixture import GaussianMixture
 
-num_frames = 10
-fpath = "AMOS2019-master/assets/data/complex-fg.mp4"
+num_frames = 5
+fpath = "AMOS2019-master/assets/data/simple-bg.mp4"
+# fpath = "AMOS2019-master/assets/data/simple-fg.mp4"
+# fpath = "AMOS2019-master/assets/data/complex-bg.mp4"
+# fpath = "AMOS2019-master/assets/data/complex-fg.mp4"
+
+# Video out filename
 fname = 'complex-fg.mp4'
+
+# Classifier choice parameter
 classifier_type = 'gmm'
+
+# GT file paths
+sfg_p = "groundtruth-files/simple-fg-gt.csv"
+sbg_p = "groundtruth-files/simple-bg-gt.csv"
+cfg_p = "groundtruth-files/complex-fg-gt.csv"
+cbg_p = "groundtruth-files/complex-bg-gt.csv"
 
 # Helper function to create a fused frame
 # Combines frames from index in back n_frames
@@ -19,34 +33,34 @@ classifier_type = 'gmm'
 
 
 # Helper function to read in groundtruth data files
-def read_gt_files():
-    sfg_r = csv.reader(open("groundtruth-files/simple-fg-gt.csv"))
-    sbg_r = csv.reader(open("groundtruth-files/simple-bg-gt.csv"))
-    cfg_r = csv.reader(open("groundtruth-files/complex-fg-gt.csv"))
-    cbg_r = csv.reader(open("groundtruth-files/complex-bg-gt.csv"))
+def read_gt(fname):
+    return np.genfromtxt(fname, delimiter=',', skip_header=1)
 
-    # Read in array. [0] is frame no., [1] is total objects, [2] is debris
-    # Throw away headers
-    _ = next(sfg_r)
-    _ = next(sbg_r)
-    _ = next(cfg_r)
-    _ = next(cbg_r)
+# Helper function to plot classification performance
+def plot_stats(class_stats, gt_stats):
+    # GT is staggered 30-60 frames, so need to interpolate in code for plotting
+    gt_interpolated = []
+    j = 0 # j tracks gt_stats index
+    for frame in class_stats:
+        i = int(frame[0])
+        # If current frame is greater than the window, then bump up the next
+        if i > int(gt_stats[j][0]):
+            print("i: " + str(i))
+            print("j: " + str(j))
+            print("gt_frame: " + str(int(gt_stats[j][0])))
+            j += 1
 
-    sfg_gt = []
-    sbg_gt = []
-    cfg_gt = []
-    cbg_gt = []
+        gt_interpolated.append(gt_stats[j].copy())
+        gt_interpolated[i - 1][0] = i
 
-    for row in sfg_r:
-        sfg_gt.append(row)
-    for row in sbg_r:
-        sbg_gt.append(row)
-    for row in cfg_r:
-        cfg_gt.append(row)
-    for row in cbg_r:
-        cbg_gt.append(row)
 
-    return sfg_gt, sbg_gt, cfg_gt, cbg_gt
+    # Plot
+    gt_interpolated = np.array(gt_interpolated)
+    plt.plot(class_stats[:, 0], class_stats[:, 2], label="# Debris Objects")
+    plt.plot(gt_interpolated[:, 0], gt_interpolated[:, 2], label="# GT Debris Objects")
+    plt.legend()
+    plt.show()
+
 
 # Helper function to compute the average area of all detected contours in the image
 def avgContoursArea(contours):
@@ -67,7 +81,6 @@ def drawBoundingBoxes(contours, c_frame, features, w_vid, video_writer):
     if classifier_type == 'gmm':
         with open('./pickle/gmm_complex_fg.pkl', 'rb') as f:
                 classifier = pickle.load(f)
-        
 
     m_features = np.zeros((4,2))
 
@@ -92,10 +105,12 @@ def drawBoundingBoxes(contours, c_frame, features, w_vid, video_writer):
         m_features[q, 1] /= len(features)
 
     i = 0
+    n_deb = 0
     for c in contours:
         (x,y,w,h) = cv2.boundingRect(c)
         if classify(m_features, features[i], classifier):
             cv2.rectangle(c_frame, (x-10,y-10), (x+10+w, y+10+h), (255, 0, 0), 2)
+            n_deb += 1
         i += 1
 
     # If we write out to video
@@ -103,8 +118,11 @@ def drawBoundingBoxes(contours, c_frame, features, w_vid, video_writer):
         merge_frame = cv2.cvtColor(c_frame, cv2.COLOR_GRAY2BGR)
         video_writer.write(merge_frame)
 
-    cv2.imshow('Frame', c_frame)
-    cv2.imwrite("media/im_with_keypoints_n_5_mean_thresh.png", c_frame)
+    # cv2.imshow('Frame', c_frame)
+    # cv2.imwrite("media/im_with_keypoints_n_5_mean_thresh.png", c_frame)
+
+    # Return frame stats for performance analysis
+    return [0, len(features), n_deb]
 
 # Takes in mean feature vectors and computes distance from the mean
 # Returns 1 if far enough away, 0 if not
@@ -178,7 +196,7 @@ def main():
     vr = cv2.VideoCapture(fpath)
 
     # Control whether we write video or not
-    debug = False
+    debug = True
     write_video = False
     # fout_name = "complex_fg_mean_classifier.avi"
     fout_name = "__.avi"
@@ -189,11 +207,21 @@ def main():
     if not vr.isOpened():
         raise Exception("Error opening video stream or file")
 
+    # Track which frame index we are currently on
     i = 0
+    # init flag for class stats
+    init_f = 1
+
+    # Create array for fused frames
     f_frames = np.zeros((num_frames, 1080, 1920))
 
+    # Track classification statistics to evaluate performance
+    class_stats = []
+    # Read in gt
+    gt_stats = read_gt(sbg_p)
+
     while vr.isOpened():
-        if debug and i % 100 == 0:
+        if debug and i % 10 == 0:
             print("On frame: " + str(i))
             if i > 3000:
                 break
@@ -201,11 +229,11 @@ def main():
         c_frame = np.zeros((1080, 1920))
         # Store most recent frames
 
-
         # Treat f_frames as a circular array
         ret, frame_in = vr.read()
         i += 1
 
+        # If we succesfully read in frame, process it through pipeline
         if ret:
             f_frames[i % num_frames] = cv2.cvtColor(frame_in, cv2.COLOR_RGB2GRAY)
             ret, f_frames[i % num_frames] = cv2.threshold(f_frames[i % num_frames], 1, 255, cv2.THRESH_BINARY)
@@ -216,7 +244,7 @@ def main():
             for j in range(num_frames):
                 c_frame = np.add(c_frame, f_frames[j])
 
-            # Rescale image to be in bounds
+            # Rescale image to be in bounds after summation
             c_frame = cv2.convertScaleAbs(c_frame)
 
             # Extract contours from fused image
@@ -226,7 +254,15 @@ def main():
             features = extract(contours)
 
             # Classify and draw boxes around identified outliers
-            drawBoundingBoxes(contours, c_frame, features, write_video, vw)
+            frame_stats = drawBoundingBoxes(contours, c_frame, features, write_video, vw)
+            frame_stats[0] = i
+
+            class_stats.append(frame_stats)
+            # if(init_f):
+            #     class_stats = frame_stats
+            #     init_f = 0
+            # else:
+            #     class_stats = np.append(class_stats, frame_stats, axis=1)
 
         # Freeze until any key pressed. Quit on pressing q
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -234,6 +270,10 @@ def main():
     vr.release()
     vw.release()
     cv2.destroyAllWindows()
+
+    # Plot classification performance against groundtruth
+    class_stats = np.array(class_stats)
+    plot_stats(class_stats, gt_stats)
 
     print("Completed")
 
