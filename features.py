@@ -14,7 +14,7 @@ fname = "simple-bg"
 classifier_type = 'gmm'
 
 fpath = "AMOS2019-master/assets/data/" + fname + ".mp4"
-fout_name = fname + ".avi"
+fout_name = fname + '-' + classifier_type + ".avi"
 
 # GT file paths
 gt_fpath = "groundtruth-files/" + fname + "-gt.csv"
@@ -196,10 +196,10 @@ def main():
 
     # Control whether we write video or not
     debug = True
-    write_video = False
-    if write_video:
-        print("Writing result out to: " + fout_name)
-        vw = cv2.VideoWriter(fout_name, cv2.VideoWriter_fourcc(*'MPEG'), 60, (1920, 1080))
+    # write_video = False
+    # if write_video:
+    print("Writing result out to: " + fout_name)
+    vw = cv2.VideoWriter(fout_name, cv2.VideoWriter_fourcc(*'MPEG'), 60, (1920, 1080))
 
     if not vr.isOpened():
         raise Exception("Error opening video stream or file")
