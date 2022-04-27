@@ -15,7 +15,7 @@ from kfold import kFold
 num_frames = 5
 frame_stride = 3
 fname = "simple-fg"
-classifier_type = 'naive'
+classifier_type = 'gmm'
 mean_alpha = 0.9
 
 fpath = "AMOS2019-master/assets/data/" + fname + ".mp4"
@@ -267,7 +267,7 @@ def main():
     cv2.destroyAllWindows()
 
     # Plot classification performance against groundtruth
-    class_stats = kFold(10, 'gmm', fname)
+    class_stats = kFold(10, classifier_type, fname)
     class_stats = np.array(class_stats)
     plot_stats(class_stats, gt_stats)
 

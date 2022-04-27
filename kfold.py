@@ -21,23 +21,28 @@ def kFold(k, classifier_type, fname):
 
     features = np.array(features)
     N = len(features)
-    num_debris = []
+    num_debris = np.zeros(len(num_features))
     idxs_shuffled = np.arange(0, N, 1, dtype=int)
     np.random.shuffle(idxs_shuffled)
     B = N // k
+    result = np.zeros(len(features))
     for i in range(k):
-        remainder_idx = np.append(idxs_shuffled[:i*B], idxs_shuffled[i*B:(i+1)*B])
+        remainder_idx = np.append(idxs_shuffled[:i*B], idxs_shuffled[(i+1)*B:])
         test_slice_idx = idxs_shuffled[i*B : (i+1)*B]
         classifier.fit(features[remainder_idx])
-        y_hat = classifier.predict(features[test_slice_idx])
-        result = np.zeros(N)
-        result[test_slice_idx] = y_hat
+        # y_hat = classifier.predict(features[test_slice_idx])
+        # result = np.zeros(N)
+        # result[test_slice_idx] = y_hat
+        y_hat = classifier.predict(features)
+        y_hat[remainder_idx] = 0
+        result += y_hat
 
-        cur = 0
-        for num_feature in num_features:
-            num_debris += [sum(result[cur : cur + num_feature])]
-            cur += num_feature
-    id = np.arange(0, len(num_debris), 1, dtype=int)
-    return [id, num_feature, num_debris]
-        
-    
+    cur = 0
+    for j, num_feature in enumerate(num_features):
+        num_debris[j] += [sum(result[cur : cur + num_feature])]
+        cur += num_feature
+    # print(num_debris)
+    id = np.arange(1, len(num_features)+1, 1, dtype=int)
+    res = np.array([np.array(id), np.array(num_features), np.array(num_debris)], dtype=int).T
+    return res
+kFold(10, 'gmm', fname = "simple-bg")
