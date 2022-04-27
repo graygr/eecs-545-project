@@ -267,6 +267,7 @@ def main():
     cv2.destroyAllWindows()
 
     # Plot classification performance against groundtruth
+    class_stats = kFold(10, 'gmm', fname)
     class_stats = np.array(class_stats)
     plot_stats(class_stats, gt_stats)
 

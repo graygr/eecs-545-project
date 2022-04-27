@@ -1,6 +1,10 @@
-from features import *
+# from features import *
+import numpy as np
+import pickle
+from sklearn.mixture import GaussianMixture
+from sklearn.cluster import KMeans
 
-def kFold(k):
+def kFold(k, classifier_type, fname):
     classifier = None
 
     if classifier_type == 'gmm':
@@ -33,7 +37,7 @@ def kFold(k):
         for num_feature in num_features:
             num_debris += [sum(result[cur : cur + num_feature])]
             cur += num_feature
-    id = range(len(num_debris))
+    id = np.arange(0, len(num_debris), 1, dtype=int)
     return [id, num_feature, num_debris]
         
     
