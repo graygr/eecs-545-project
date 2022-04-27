@@ -23,10 +23,6 @@ fout_name = fname + '-' + classifier_type + ".avi"
 
 # GT file paths
 gt_fpath = "groundtruth-files/" + fname + "-gt.csv"
-# sfg_p = "groundtruth-files/simple-fg-gt.csv"
-# sbg_p = "groundtruth-files/simple-bg-gt.csv"
-# cfg_p = "groundtruth-files/complex-fg-gt.csv"
-# cbg_p = "groundtruth-files/complex-bg-gt.csv"
 
 # Helper function to read in groundtruth data files
 def read_gt(fname):

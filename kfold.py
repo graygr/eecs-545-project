@@ -17,7 +17,7 @@ def kFold(k):
 
     features = np.array(features)
     N = len(features)
-    frame_count = []
+    num_debris = []
     idxs_shuffled = np.arange(0, N, 1, dtype=int)
     np.random.shuffle(idxs_shuffled)
     B = N // k
@@ -31,9 +31,9 @@ def kFold(k):
 
         cur = 0
         for num_feature in num_features:
-            frame_count += [sum(result[cur : cur + num_feature])]
+            num_debris += [sum(result[cur : cur + num_feature])]
             cur += num_feature
+    id = range(len(num_debris))
+    return [id, num_feature, num_debris]
         
-    print('#####################')
-    print(frame_count)
-    print('#####################')
+    
