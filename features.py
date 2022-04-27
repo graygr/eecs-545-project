@@ -8,10 +8,11 @@ import csv
 import matplotlib.pyplot as plt
 
 from sklearn.mixture import GaussianMixture
+from sklearn.cluster import KMeans
 
 num_frames = 5
-fname = "simple-bg"
-classifier_type = 'gmm'
+fname = "complex-fg"
+classifier_type = 'kmeans'
 
 fpath = "AMOS2019-master/assets/data/" + fname + ".mp4"
 fout_name = fname + '-' + classifier_type + ".avi"
@@ -75,7 +76,11 @@ def drawBoundingBoxes(contours, c_frame, features, w_vid, video_writer):
     classifier = None
 
     if classifier_type == 'gmm':
-        with open('./pickle/gmm_complex_fg.pkl', 'rb') as f:
+        with open('./pickle/gmm_' + fname[:-3] + '_' + fname[-2:] + '.pkl', 'rb') as f:
+            classifier = pickle.load(f)
+    
+    elif classifier_type == 'kmeans':
+        with open('./pickle/kmeans_' + fname[:-3] + '_' + fname[-2:] + '.pkl', 'rb') as f:
             classifier = pickle.load(f)
 
     m_features = np.zeros((4,2))
@@ -146,7 +151,7 @@ def classify(m_features, feature, classifier):
             return True
 
     # Gaussian probability, use mean and variance too
-    elif classifier_type == 'gmm':
+    elif classifier_type == 'gmm' or 'kmeans':
         
         _feature = np.array(feature)
         pred = classifier.predict(_feature.reshape(1, -1))
@@ -172,27 +177,33 @@ def extract(contours):
     return features
 
 def kFold(k, gt_stats):
+
+    classifier = None
+
     if classifier_type == 'gmm':
         classifier = GaussianMixture(n_components=2, max_iter=10000, covariance_type='full')
-        features = None
-        with open('./pickle/' +fname[:-3] + '_' + fname[-2:]+'_features.pkl', 'rb') as f:
-            features = pickle.load(f)
-        features = np.array(features)
-        N = len(features)
-        idxs_shuffled = np.arange(0, N, 1, dtype=int)
-        np.random.shuffle(idxs_shuffled)
-        B = N // k
-        for i in range(k):
-            remainder_idx = np.append(idxs_shuffled[:i*B], idxs_shuffled[i*B:(i+1)*B])
-            test_slice_idx = idxs_shuffled[i*B : (i+1)*B]
-            classifier.fit(features[remainder_idx])
-            y_hat = classifier.predict(features[test_slice_idx])
-            result = np.zeros(N)
-            result[test_slice_idx] = y_hat
-            print('#####################')
-            print(i)
-            print(np.sum(result))
-            print('#####################')
+    elif classifier_type == 'kmeans':
+        classifier = KMeans(n_clusters=2, max_iter=10000)
+
+    features = None
+    with open('./pickle/' + fname[:-3] + '_' + fname[-2:] + '_features.pkl', 'rb') as f:
+        features = pickle.load(f)
+    features = np.array(features)
+    N = len(features)
+    idxs_shuffled = np.arange(0, N, 1, dtype=int)
+    np.random.shuffle(idxs_shuffled)
+    B = N // k
+    for i in range(k):
+        remainder_idx = np.append(idxs_shuffled[:i*B], idxs_shuffled[i*B:(i+1)*B])
+        test_slice_idx = idxs_shuffled[i*B : (i+1)*B]
+        classifier.fit(features[remainder_idx])
+        y_hat = classifier.predict(features[test_slice_idx])
+        result = np.zeros(N)
+        result[test_slice_idx] = y_hat
+        print('#####################')
+        print(i)
+        print(np.sum(result))
+        print('#####################')
 
 
 
