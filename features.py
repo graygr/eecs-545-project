@@ -13,6 +13,7 @@ from sklearn.cluster import KMeans
 num_frames = 5
 fname = "complex-fg"
 classifier_type = 'kmeans'
+mean_alpha = 0.9
 
 fpath = "AMOS2019-master/assets/data/" + fname + ".mp4"
 fout_name = fname + '-' + classifier_type + ".avi"
@@ -23,11 +24,6 @@ gt_fpath = "groundtruth-files/" + fname + "-gt.csv"
 # sbg_p = "groundtruth-files/simple-bg-gt.csv"
 # cfg_p = "groundtruth-files/complex-fg-gt.csv"
 # cbg_p = "groundtruth-files/complex-bg-gt.csv"
-
-# Helper function to create a fused frame
-# Combines frames from index in back n_frames
-# Returns a fused frame from starting index, going back n_frames
-
 
 # Helper function to read in groundtruth data files
 def read_gt(fname):
@@ -42,9 +38,9 @@ def plot_stats(class_stats, gt_stats):
         i = int(frame[0])
         # If current frame is greater than the window, then bump up the next
         if i > int(gt_stats[j][0]):
-            print("i: " + str(i))
-            print("j: " + str(j))
-            print("gt_frame: " + str(int(gt_stats[j][0])))
+            # print("i: " + str(i))
+            # print("j: " + str(j))
+            # print("gt_frame: " + str(int(gt_stats[j][0])))
             j += 1
 
         gt_interpolated.append(gt_stats[j].copy())
@@ -69,7 +65,7 @@ def avgContoursArea(contours):
     return mean_area
 
 # Draw classification boxes around outliers
-def drawBoundingBoxes(contours, c_frame, features, w_vid, video_writer):
+def drawBoundingBoxes(contours, c_frame, features, w_vid, video_writer, past_m_features):
     # Compute mean features
     # mean_area = avgContoursArea(contours)
 
@@ -88,12 +84,23 @@ def drawBoundingBoxes(contours, c_frame, features, w_vid, video_writer):
     # Compute means
     for f in features:
         m_features[0,0] += f[0]
-        m_features[1,0] = f[1]
-        m_features[2,0] = f[2]
-        m_features[3,0] = f[3]
+        m_features[1,0] += f[1]
+        m_features[2,0] += f[2]
+        m_features[3,0] += f[3]
     # Normalize
     for q in range(4):
         m_features[q,0] /= len(features)
+
+    # If using rolling mean, compute with passdown mean
+    if classifier_type == 'kernel_mean' and len(past_m_features) > 1:
+        # mean decays wrt mean_alpha
+        m_features[0, 0] += mean_alpha * past_m_features[0]
+        m_features[1, 0] += mean_alpha * past_m_features[1]
+        m_features[2, 0] += mean_alpha * past_m_features[2]
+        m_features[3, 0] += mean_alpha * past_m_features[3]
+
+        for q in range(4):
+            m_features[q, 0] /= (1 + mean_alpha)
 
     # Compute variances
     for f in features:
@@ -123,7 +130,7 @@ def drawBoundingBoxes(contours, c_frame, features, w_vid, video_writer):
     # cv2.imwrite("media/im_with_keypoints_n_5_mean_thresh.png", c_frame)
 
     # Return frame stats for performance analysis
-    return [0, len(features), n_deb]
+    return [0, len(features), n_deb], m_features[:, 0]
 
 # Takes in mean feature vectors and computes distance from the mean
 # Returns 1 if far enough away, 0 if not
@@ -148,6 +155,17 @@ def classify(m_features, feature, classifier):
         print(err)
 
         if err > err_thresh:
+            return True
+
+    elif classifier_type == 'kernel_mean':
+        # Calculate kernelized error
+        err = 0
+        for i in range(len(feature)):
+            err += (m_features[i, 0] - feature[i]) ** 2
+        err = np.sqrt(err)
+        print(err)
+        # TODO: Apply kmeans to this to group errors?
+        if err > 20:
             return True
 
     # Gaussian probability, use mean and variance too
@@ -222,8 +240,6 @@ def main():
 
     # Track which frame index we are currently on
     i = 0
-    # init flag for class stats
-    init_f = 1
 
     # Create array for fused frames
     f_frames = np.zeros((num_frames, 1080, 1920))
