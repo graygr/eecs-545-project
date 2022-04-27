@@ -10,6 +10,8 @@ import time
 from sklearn.mixture import GaussianMixture
 from sklearn.cluster import KMeans
 
+from kfold import kFold
+
 num_frames = 5
 frame_stride = 3
 fname = "simple-fg"
@@ -182,37 +184,6 @@ def extract(contours):
 
         features.append([area, perimeter, circularity, min_cir_area])
     return features
-
-def kFold(k, gt_stats):
-
-    classifier = None
-
-    if classifier_type == 'gmm':
-        classifier = GaussianMixture(n_components=2, max_iter=10000, covariance_type='full')
-    elif classifier_type == 'kmeans':
-        classifier = KMeans(n_clusters=2, max_iter=10000)
-
-    features = None
-    with open('./pickle/' + fname[:-3] + '_' + fname[-2:] + '_features.pkl', 'rb') as f:
-        features = pickle.load(f)
-    features = np.array(features)
-    N = len(features)
-    idxs_shuffled = np.arange(0, N, 1, dtype=int)
-    np.random.shuffle(idxs_shuffled)
-    B = N // k
-    for i in range(k):
-        remainder_idx = np.append(idxs_shuffled[:i*B], idxs_shuffled[i*B:(i+1)*B])
-        test_slice_idx = idxs_shuffled[i*B : (i+1)*B]
-        classifier.fit(features[remainder_idx])
-        y_hat = classifier.predict(features[test_slice_idx])
-        result = np.zeros(N)
-        result[test_slice_idx] = y_hat
-        print('#####################')
-        print(i)
-        print(np.sum(result))
-        print('#####################')
-
-
 
 def main():
     vr = cv2.VideoCapture(fpath)
