@@ -177,17 +177,22 @@ def kFold(k, gt_stats):
         features = None
         with open('./pickle/' +fname[:-3] + '_' + fname[-2:]+'_features.pkl', 'rb') as f:
             features = pickle.load(f)
+        features = np.array(features)
         N = len(features)
-        print(N)
-        raise
-        idxs_shuffled = np.arange(N)
+        idxs_shuffled = np.arange(0, N, 1, dtype=int)
         np.random.shuffle(idxs_shuffled)
         B = N // k
         for i in range(k):
+            remainder_idx = np.append(idxs_shuffled[:i*B], idxs_shuffled[i*B:(i+1)*B])
             test_slice_idx = idxs_shuffled[i*B : (i+1)*B]
-            remainder_idx = idxs_shuffled[:i*B].append(idxs_shuffled[(i+1)*B])
             classifier.fit(features[remainder_idx])
             y_hat = classifier.predict(features[test_slice_idx])
+            result = np.zeros(N)
+            result[test_slice_idx] = y_hat
+            print('#####################')
+            print(i)
+            print(np.sum(result))
+            print('#####################')
 
 
 
@@ -196,7 +201,7 @@ def main():
 
     # Control whether we write video or not
     debug = True
-    # write_video = False
+    write_video = False
     # if write_video:
     print("Writing result out to: " + fout_name)
     vw = cv2.VideoWriter(fout_name, cv2.VideoWriter_fourcc(*'MPEG'), 60, (1920, 1080))
