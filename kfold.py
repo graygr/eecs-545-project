@@ -42,7 +42,7 @@ def kFold(k, classifier_type, fname):
         num_debris[j] += [sum(result[cur : cur + num_feature])]
         cur += num_feature
     # print(num_debris)
-    id = np.arange(1, len(num_features)+1, 1, dtype=int)
+    id = np.arange(0, len(num_features), 1, dtype=int)
     res = np.array([np.array(id), np.array(num_features), np.array(num_debris)], dtype=int).T
     return res
-kFold(10, 'gmm', fname = "simple-bg")
+# kFold(10, 'gmm', fname = "simple-bg")

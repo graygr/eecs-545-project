@@ -14,7 +14,7 @@ from kfold import kFold
 
 num_frames = 5
 frame_stride = 3
-fname = "simple-fg"
+fname = "simple-bg"
 classifier_type = 'gmm'
 mean_alpha = 0.9
 
@@ -35,17 +35,19 @@ def plot_stats(class_stats, gt_stats):
     j = 0 # j tracks gt_stats index
     i = 1
     for frame in class_stats:
-        frame_index = int(frame[0])
-        # If current frame is greater than the window, then bump up the next
-        if frame_index > int(gt_stats[j][0]):
-            # print("i: " + str(i))
-            # print("j: " + str(j))
-            # print("gt_frame: " + str(int(gt_stats[j][0])))
-            j += 1
-        gt_interpolated.append(gt_stats[j].copy())
-        gt_interpolated[i - 1][0] = frame_index
+        if j < len(gt_stats):
+            frame_index = int(frame[0])
+            # If current frame is greater than the window, then bump up the next
+            if frame_index > int(gt_stats[j][0]):
+                # print("i: " + str(i))
+                # print("j: " + str(j))
+                # print("gt_frame: " + str(int(gt_stats[j][0])))
+                j += 1
+            if j < len(gt_stats):
+                gt_interpolated.append(gt_stats[j].copy())
+                gt_interpolated[i - 1][0] = frame_index
 
-        i += 1
+            i += 1
 
     # Plot
     gt_interpolated = np.array(gt_interpolated)
@@ -182,89 +184,89 @@ def extract(contours):
     return features
 
 def main():
-    vr = cv2.VideoCapture(fpath)
+    # vr = cv2.VideoCapture(fpath)
 
-    # Control whether we write video or not
-    debug = True
-    write_video = False
+    # # Control whether we write video or not
+    # debug = True
+    # write_video = False
+    # # if write_video:
     # if write_video:
-    if write_video:
-        print("Writing result out to: " + fout_name)
-    vw = cv2.VideoWriter(fout_name, cv2.VideoWriter_fourcc(*'MPEG'), 60, (1920, 1080))
+    #     print("Writing result out to: " + fout_name)
+    # vw = cv2.VideoWriter(fout_name, cv2.VideoWriter_fourcc(*'MPEG'), 60, (1920, 1080))
 
-    if not vr.isOpened():
-        raise Exception("Error opening video stream or file")
+    # if not vr.isOpened():
+    #     raise Exception("Error opening video stream or file")
 
-    # Track which frame index we are currently on
-    i = 0
+    # # Track which frame index we are currently on
+    # i = 0
 
-    # Create array for fused frames
-    f_frames = np.zeros((num_frames, 1080, 1920))
+    # # Create array for fused frames
+    # f_frames = np.zeros((num_frames, 1080, 1920))
 
-    # Track classification statistics to evaluate performance
-    class_stats = []
-    # Read in gt
+    # # Track classification statistics to evaluate performance
+    # class_stats = []
+    # # Read in gt
     gt_stats = read_gt(gt_fpath)
-    m_features = []
+    # m_features = []
 
-    # kFold(10, gt_stats)
-
-
-    start_time = time.time()
-
-    while vr.isOpened():
-        if debug and i % 10 == 0:
-            print("On frame: " + str(i))
-            if i > 4000:
-                break
+    # # kFold(10, gt_stats)
 
 
-        c_frame = np.zeros((1080, 1920))
-        # Store most recent frames
+    # start_time = time.time()
 
-        # Treat f_frames as a circular array
-        ret, frame_in = vr.read()
-        i += 1
+    # while vr.isOpened():
+    #     if debug and i % 10 == 0:
+    #         print("On frame: " + str(i))
+    #         if i > 4000:
+    #             break
 
-        # If we succesfully read in frame, process it through pipeline
-        if ret:
-            f_frames[i % num_frames] = cv2.cvtColor(frame_in, cv2.COLOR_RGB2GRAY)
-            ret, f_frames[i % num_frames] = cv2.threshold(f_frames[i % num_frames], 1, 255, cv2.THRESH_BINARY)
-            kernel = np.ones((5, 5), 'uint8')
-            f_frames[i % num_frames] = cv2.dilate(f_frames[i % num_frames], kernel, iterations=1)
 
-            if i % frame_stride == 0:
-                # Combine current frame buffer
-                for j in range(num_frames):
-                    c_frame = np.add(c_frame, f_frames[j])
+    #     c_frame = np.zeros((1080, 1920))
+    #     # Store most recent frames
 
-                # Rescale image to be in bounds after summation
-                c_frame = cv2.convertScaleAbs(c_frame)
+    #     # Treat f_frames as a circular array
+    #     ret, frame_in = vr.read()
+    #     i += 1
 
-                # Extract contours from fused image
-                contours, hierarchy = cv2.findContours(c_frame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    #     # If we succesfully read in frame, process it through pipeline
+    #     if ret:
+    #         f_frames[i % num_frames] = cv2.cvtColor(frame_in, cv2.COLOR_RGB2GRAY)
+    #         ret, f_frames[i % num_frames] = cv2.threshold(f_frames[i % num_frames], 1, 255, cv2.THRESH_BINARY)
+    #         kernel = np.ones((5, 5), 'uint8')
+    #         f_frames[i % num_frames] = cv2.dilate(f_frames[i % num_frames], kernel, iterations=1)
 
-                # Extract features from contours
-                features = extract(contours)
+    #         if i % frame_stride == 0:
+    #             # Combine current frame buffer
+    #             for j in range(num_frames):
+    #                 c_frame = np.add(c_frame, f_frames[j])
 
-                # Classify and draw boxes around identified outliers
-                frame_stats, m_features = drawBoundingBoxes(contours, c_frame, features, write_video, vw, m_features)
-                frame_stats[0] = i
+    #             # Rescale image to be in bounds after summation
+    #             c_frame = cv2.convertScaleAbs(c_frame)
 
-                class_stats.append(frame_stats)
-        else:
-            break
-        # Freeze until any key pressed. Quit on pressing q
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+    #             # Extract contours from fused image
+    #             contours, hierarchy = cv2.findContours(c_frame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-    end_time = time.time()
-    print("Total runtime: " + str(end_time - start_time))
-    print("Average time per frame: " + str((end_time - start_time) / i))
+    #             # Extract features from contours
+    #             features = extract(contours)
 
-    vr.release()
-    vw.release()
-    cv2.destroyAllWindows()
+    #             # Classify and draw boxes around identified outliers
+    #             frame_stats, m_features = drawBoundingBoxes(contours, c_frame, features, write_video, vw, m_features)
+    #             frame_stats[0] = i
+
+    #             class_stats.append(frame_stats)
+    #     else:
+    #         break
+    #     # Freeze until any key pressed. Quit on pressing q
+    #     if cv2.waitKey(1) & 0xFF == ord('q'):
+    #         break
+
+    # end_time = time.time()
+    # print("Total runtime: " + str(end_time - start_time))
+    # print("Average time per frame: " + str((end_time - start_time) / i))
+
+    # vr.release()
+    # vw.release()
+    # cv2.destroyAllWindows()
 
     # Plot classification performance against groundtruth
     class_stats = kFold(10, classifier_type, fname)
