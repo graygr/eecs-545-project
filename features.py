@@ -101,6 +101,7 @@ def drawBoundingBoxes(contours, c_frame, features, w_vid, video_writer, past_m_f
         m_features[1, 0] += mean_alpha * past_m_features[1]
         m_features[2, 0] += mean_alpha * past_m_features[2]
         m_features[3, 0] += mean_alpha * past_m_features[3]
+        m_features[4, 0] += mean_alpha * past_m_features[4]
 
         for q in range(4):
             m_features[q, 0] /= (1 + mean_alpha)
@@ -151,11 +152,12 @@ def classify(m_features, feature, classifier):
         for i in range(len(feature)):
             err += (m_features[i, 0] - feature[i]) ** 2
             err_thresh += m_features[i, 1]
+        err = np.sqrt(err)
 
-        # print(str(err) + " " + str(err_thresh))
+        #print(str(err) + " " + str(err_thresh))
 
         # If error is greater than the mean variance, then debris
-        if err > 1200*err_thresh:
+        if err > 2*err_thresh:
             return True
 
     # Gaussian probability, use mean and variance too
@@ -170,17 +172,23 @@ def extract(contours):
 
     # Compute bounding box and draw it on the frame
     for c in contours:
+        # print(len(c))
         # Pixel area of contour
-        area = cv2.contourArea(c)
+        # area = cv2.contourArea(c)
         # Perimeters of contour
         perimeter = cv2.arcLength(c, True)
-        # How close the shape fits a circle
-        circularity = 4*np.pi / (perimeter**2)
-        # Area of min enclosing circle
+        # Aspect ratio
+        _,_,w,h = cv2.boundingRect(c)
+        aspect_ratio = float(w)/h
+        # Radius of min enclosing circle
         _, radius = cv2.minEnclosingCircle(c)
-        min_cir_area = np.pi * radius ** 2
+        # Orientation of the object
+        if(len(c) < 5):
+            orientation = 0
+        else:
+            _, _, orientation = cv2.fitEllipseAMS(c)
 
-        features.append([area, perimeter, circularity, min_cir_area])
+        features.append([perimeter, aspect_ratio, radius, orientation])
     return features
 
 def main():
