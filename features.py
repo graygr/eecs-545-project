@@ -4,15 +4,15 @@
 import cv2
 import numpy as np
 import pickle
-import csv
 import matplotlib.pyplot as plt
+import time
 
 from sklearn.mixture import GaussianMixture
 from sklearn.cluster import KMeans
 
 num_frames = 5
 frame_stride = 3
-fname = "simple-bg"
+fname = "simple-fg"
 classifier_type = 'naive'
 mean_alpha = 0.9
 
@@ -114,7 +114,7 @@ def drawBoundingBoxes(contours, c_frame, features, w_vid, video_writer, past_m_f
     # # Normalize
     # for q in range(4):
     #     m_features[q, 1] /= len(features)
-    m_features[:, 1] = np.var(features, axis=0)
+    m_features[:, 1] = np.std(features, axis=0)
 
     i = 0
     n_deb = 0
@@ -152,10 +152,10 @@ def classify(m_features, feature, classifier):
             err += (m_features[i, 0] - feature[i]) ** 2
             err_thresh += m_features[i, 1]
 
-        # print(err)
+        # print(str(err) + " " + str(err_thresh))
 
         # If error is greater than the mean variance, then debris
-        if err > 1.5*err_thresh:
+        if err > 1200*err_thresh:
             return True
 
     # Gaussian probability, use mean and variance too
@@ -221,7 +221,8 @@ def main():
     debug = True
     write_video = False
     # if write_video:
-    print("Writing result out to: " + fout_name)
+    if write_video:
+        print("Writing result out to: " + fout_name)
     vw = cv2.VideoWriter(fout_name, cv2.VideoWriter_fourcc(*'MPEG'), 60, (1920, 1080))
 
     if not vr.isOpened():
@@ -241,11 +242,15 @@ def main():
 
     # kFold(10, gt_stats)
 
+
+    start_time = time.time()
+
     while vr.isOpened():
         if debug and i % 10 == 0:
             print("On frame: " + str(i))
-            if i > 30:
+            if i > 4000:
                 break
+
 
         c_frame = np.zeros((1080, 1920))
         # Store most recent frames
@@ -280,23 +285,21 @@ def main():
                 frame_stats[0] = i
 
                 class_stats.append(frame_stats)
-                # if(init_f):
-                #     class_stats = frame_stats
-                #     init_f = 0
-                # else:
-                #     class_stats = np.append(class_stats, frame_stats, axis=1)
-
+        else:
+            break
         # Freeze until any key pressed. Quit on pressing q
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+
+    end_time = time.time()
+    print("Total runtime: " + str(end_time - start_time))
+    print("Average time per frame: " + str((end_time - start_time) / i))
+
     vr.release()
     vw.release()
     cv2.destroyAllWindows()
 
     # Plot classification performance against groundtruth
-    print(class_stats)
-    print(gt_stats)
-
     class_stats = np.array(class_stats)
     plot_stats(class_stats, gt_stats)
 
