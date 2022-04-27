@@ -11,8 +11,9 @@ from sklearn.mixture import GaussianMixture
 from sklearn.cluster import KMeans
 
 num_frames = 5
-fname = "complex-fg"
-classifier_type = 'kmeans'
+frame_stride = 3
+fname = "simple-bg"
+classifier_type = 'naive'
 mean_alpha = 0.9
 
 fpath = "AMOS2019-master/assets/data/" + fname + ".mp4"
@@ -34,18 +35,19 @@ def plot_stats(class_stats, gt_stats):
     # GT is staggered 30-60 frames, so need to interpolate in code for plotting
     gt_interpolated = []
     j = 0 # j tracks gt_stats index
+    i = 1
     for frame in class_stats:
-        i = int(frame[0])
+        frame_index = int(frame[0])
         # If current frame is greater than the window, then bump up the next
-        if i > int(gt_stats[j][0]):
+        if frame_index > int(gt_stats[j][0]):
             # print("i: " + str(i))
             # print("j: " + str(j))
             # print("gt_frame: " + str(int(gt_stats[j][0])))
             j += 1
-
         gt_interpolated.append(gt_stats[j].copy())
-        gt_interpolated[i - 1][0] = i
+        gt_interpolated[i - 1][0] = frame_index
 
+        i += 1
 
     # Plot
     gt_interpolated = np.array(gt_interpolated)
@@ -82,14 +84,15 @@ def drawBoundingBoxes(contours, c_frame, features, w_vid, video_writer, past_m_f
     m_features = np.zeros((4,2))
 
     # Compute means
-    for f in features:
-        m_features[0,0] += f[0]
-        m_features[1,0] += f[1]
-        m_features[2,0] += f[2]
-        m_features[3,0] += f[3]
-    # Normalize
-    for q in range(4):
-        m_features[q,0] /= len(features)
+    # for f in features:
+    #     m_features[0,0] += f[0]
+    #     m_features[1,0] += f[1]
+    #     m_features[2,0] += f[2]
+    #     m_features[3,0] += f[3]
+    # # Normalize
+    # for q in range(4):
+    #     m_features[q,0] /= len(features)
+    m_features[:, 0] = np.mean(features, axis=0)
 
     # If using rolling mean, compute with passdown mean
     if classifier_type == 'kernel_mean' and len(past_m_features) > 1:
@@ -103,14 +106,15 @@ def drawBoundingBoxes(contours, c_frame, features, w_vid, video_writer, past_m_f
             m_features[q, 0] /= (1 + mean_alpha)
 
     # Compute variances
-    for f in features:
-        m_features[0, 1] += (f[0] - m_features[0,0])**2
-        m_features[1, 1] += (f[1] - m_features[1,0])**2
-        m_features[2, 1] += (f[2] - m_features[2,0])**2
-        m_features[3, 1] += (f[3] - m_features[3,0])**2
-    # Normalize
-    for q in range(4):
-        m_features[q, 1] /= len(features)
+    # for f in features:
+    #     m_features[0, 1] += (f[0] - m_features[0,0])**2
+    #     m_features[1, 1] += (f[1] - m_features[1,0])**2
+    #     m_features[2, 1] += (f[2] - m_features[2,0])**2
+    #     m_features[3, 1] += (f[3] - m_features[3,0])**2
+    # # Normalize
+    # for q in range(4):
+    #     m_features[q, 1] /= len(features)
+    m_features[:, 1] = np.var(features, axis=0)
 
     i = 0
     n_deb = 0
@@ -140,37 +144,22 @@ def classify(m_features, feature, classifier):
     # Square error with fixed margin
     if classifier_type == 'naive':
         # Thresh
-        # TODO: Tune this
-        # This thresh works for simple_bg, fails during vibration/movement though\
-        # Fails for all other more complex datasets
-        # err_thresh = 230 # simple_bg
-        err_thresh = 12000 # complex_bg
         # Squared distance
         err = 0
-        # Iterate through features
+        err_thresh = 0
+        # Iterate through features, calculate the error variance
         for i in range(len(feature)):
             err += (m_features[i, 0] - feature[i]) ** 2
-        err /= len(feature)
+            err_thresh += m_features[i, 1]
 
-        print(err)
+        # print(err)
 
-        if err > err_thresh:
-            return True
-
-    elif classifier_type == 'kernel_mean':
-        # Calculate kernelized error
-        err = 0
-        for i in range(len(feature)):
-            err += (m_features[i, 0] - feature[i]) ** 2
-        err = np.sqrt(err)
-        print(err)
-        # TODO: Apply kmeans to this to group errors?
-        if err > 20:
+        # If error is greater than the mean variance, then debris
+        if err > 1.5*err_thresh:
             return True
 
     # Gaussian probability, use mean and variance too
     elif classifier_type == 'gmm' or 'kmeans':
-        
         _feature = np.array(feature)
         pred = classifier.predict(_feature.reshape(1, -1))
         return pred
@@ -248,13 +237,14 @@ def main():
     class_stats = []
     # Read in gt
     gt_stats = read_gt(gt_fpath)
+    m_features = []
 
     # kFold(10, gt_stats)
 
     while vr.isOpened():
         if debug and i % 10 == 0:
             print("On frame: " + str(i))
-            if i > 3000:
+            if i > 30:
                 break
 
         c_frame = np.zeros((1080, 1920))
@@ -271,29 +261,30 @@ def main():
             kernel = np.ones((5, 5), 'uint8')
             f_frames[i % num_frames] = cv2.dilate(f_frames[i % num_frames], kernel, iterations=1)
 
-            # Combine current frame buffer
-            for j in range(num_frames):
-                c_frame = np.add(c_frame, f_frames[j])
+            if i % frame_stride == 0:
+                # Combine current frame buffer
+                for j in range(num_frames):
+                    c_frame = np.add(c_frame, f_frames[j])
 
-            # Rescale image to be in bounds after summation
-            c_frame = cv2.convertScaleAbs(c_frame)
+                # Rescale image to be in bounds after summation
+                c_frame = cv2.convertScaleAbs(c_frame)
 
-            # Extract contours from fused image
-            contours, hierarchy = cv2.findContours(c_frame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                # Extract contours from fused image
+                contours, hierarchy = cv2.findContours(c_frame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-            # Extract features from contours
-            features = extract(contours)
+                # Extract features from contours
+                features = extract(contours)
 
-            # Classify and draw boxes around identified outliers
-            frame_stats = drawBoundingBoxes(contours, c_frame, features, write_video, vw)
-            frame_stats[0] = i
+                # Classify and draw boxes around identified outliers
+                frame_stats, m_features = drawBoundingBoxes(contours, c_frame, features, write_video, vw, m_features)
+                frame_stats[0] = i
 
-            class_stats.append(frame_stats)
-            # if(init_f):
-            #     class_stats = frame_stats
-            #     init_f = 0
-            # else:
-            #     class_stats = np.append(class_stats, frame_stats, axis=1)
+                class_stats.append(frame_stats)
+                # if(init_f):
+                #     class_stats = frame_stats
+                #     init_f = 0
+                # else:
+                #     class_stats = np.append(class_stats, frame_stats, axis=1)
 
         # Freeze until any key pressed. Quit on pressing q
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -303,6 +294,9 @@ def main():
     cv2.destroyAllWindows()
 
     # Plot classification performance against groundtruth
+    print(class_stats)
+    print(gt_stats)
+
     class_stats = np.array(class_stats)
     plot_stats(class_stats, gt_stats)
 
