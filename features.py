@@ -12,13 +12,14 @@ from sklearn.cluster import KMeans
 
 from kfold import kFold
 
-num_frames = 20
-frame_stride = 1
+num_frames = 10
+frame_stride = 3
 kernel_size = 5
-fname = "complex-bg"
+fname = "complex-fg"
 classifier_type = 'naive'
 mean_alpha = 0.9
-sensitivity = 2
+sensitivity = 10
+# 10
 
 fpath = "AMOS2019-master/assets/data/" + fname + ".mp4"
 fout_name = fname + '-' + classifier_type + ".avi"
@@ -53,6 +54,11 @@ def plot_stats(class_stats, gt_stats):
 
     # Plot
     gt_interpolated = np.array(gt_interpolated)
+
+    # Write out for later
+    np.savetxt(fname + "-" + classifier_type + "-class_stats.csv", class_stats, delimiter=",")
+    np.savetxt(fname + "-" + classifier_type + "-gt_interp.csv", gt_interpolated, delimiter=",")
+
     plt.plot(class_stats[:, 0], class_stats[:, 2], label="# Debris Objects")
     plt.plot(gt_interpolated[:, 0], gt_interpolated[:, 2], label="# GT Debris Objects")
     plt.legend()
@@ -141,10 +147,10 @@ def classify(m_features, feature, classifier):
             # err_thresh += m_features[i, 1]
 
         # print(m_features[:, 1])
-        print(str(err) + " " + str(err_thresh))
+        # print(str(err) + " " + str(err_thresh))
 
         # If error is greater than the mean variance, then debris
-        if err > 1.2:
+        if err > sensitivity:
             return True
 
     # Gaussian probability, use mean and variance too
@@ -214,7 +220,7 @@ def main():
     while vr.isOpened():
         if debug and i % 10 == 0:
             print("On frame: " + str(i))
-            if i > 400:
+            if i > 4000:
                 break
 
 
@@ -250,7 +256,7 @@ def main():
                 frame_stats[0] = i
 
                 class_stats.append(frame_stats)
-                cv2.imshow('Frame', c_frame)
+                # cv2.imshow('Frame', c_frame)
                 # Show image
         else:
             break
@@ -269,6 +275,9 @@ def main():
 
     # Plot classification performance against groundtruth
     # class_stats = kFold(10, classifier_type, fname)
+
+    # Write class stats out to CSV
+
     class_stats = np.array(class_stats)
     plot_stats(class_stats, gt_stats)
 
