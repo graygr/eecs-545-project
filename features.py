@@ -15,8 +15,8 @@ from kfold import kFold
 num_frames = 10
 frame_stride = 3
 kernel_size = 5
-fname = "complex-fg"
-classifier_type = 'naive'
+fname = "simple-bg"
+classifier_type = 'gmm'
 mean_alpha = 0.9
 sensitivity = 10
 # 10
@@ -186,7 +186,17 @@ def extract(contours):
         features.append([perimeter, area, radius, orientation, aspect_ratio])
     return features
 
+def write_csv(class_stats):
+    import pandas as pd
+    pd.DataFrame(class_stats).to_csv(
+        './class-stats/' + fname + '-' + classifier_type + '-class_stats.csv',
+        sep='\t', index=False,  header=None)
+
+
 def main():
+    class_stats = kFold(10, classifier_type, fname)
+    write_csv(class_stats)
+    raise
     vr = cv2.VideoCapture(fpath)
 
     # # Control whether we write video or not

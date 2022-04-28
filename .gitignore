@@ -4,5 +4,4 @@
 .DS_Store
 *.xml
 *.iml
-*.csv
 *.pyc
