@@ -3,7 +3,7 @@ from sklearn.mixture import GaussianMixture
 
 import pickle
 
-fname = "complex-fg"
+fname = "complex-bg"
 fpath = "AMOS2019-master/assets/data/" + fname + ".mp4"
 fout_path = './pickle/' + fname[:-3] + '_' + fname[-2:]+ '_features' + '.pkl'
 num_features_path = './pickle/' + fname[:-3] + '_' + fname[-2:]+ '_num_features' + '.pkl'

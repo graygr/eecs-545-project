@@ -3,7 +3,7 @@ from sklearn.mixture import GaussianMixture
 
 import pickle
 
-fname = 'simple-fg'
+fname = 'complex-fg'
 
 def main():
 

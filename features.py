@@ -15,7 +15,7 @@ from kfold import kFold
 num_frames = 10
 frame_stride = 3
 kernel_size = 5
-fname = "simple-fg"
+fname = "complex-fg"
 classifier_type = 'gmm'
 mean_alpha = 0.9
 sensitivity = 10
