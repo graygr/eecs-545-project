@@ -194,9 +194,9 @@ def write_csv(class_stats):
 
 
 def main():
-    class_stats = kFold(10, classifier_type, fname)
-    write_csv(class_stats)
-    raise
+    # class_stats = kFold(10, classifier_type, fname)
+    # write_csv(class_stats)
+    # raise
     vr = cv2.VideoCapture(fpath)
 
     # # Control whether we write video or not
