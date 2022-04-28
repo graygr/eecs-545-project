@@ -15,7 +15,7 @@ from kfold import kFold
 num_frames = 10
 frame_stride = 3
 kernel_size = 5
-fname = "complex-fg"
+fname = "simple-bg"
 classifier_type = 'gmm'
 mean_alpha = 0.9
 sensitivity = 10
@@ -189,7 +189,7 @@ def extract(contours):
 def write_csv(class_stats):
     import pandas as pd
     pd.DataFrame(class_stats).iloc[::3].to_csv(
-        './class-stats/' + fname + '-' + classifier_type + '-class_stats.csv',
+        './class-stats/' + fname + '-' + classifier_type + '-class_stats_newfeature.csv',
         sep='\t', index=False,  header=None)
 
 
