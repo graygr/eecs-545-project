@@ -16,7 +16,7 @@ num_frames = 10
 frame_stride = 3
 kernel_size = 5
 fname = "simple-bg"
-classifier_type = 'gmm'
+classifier_type = 'kmeans_kernel' # gmm, kmeans, kmeans_kernel
 mean_alpha = 0.9
 sensitivity = 10
 # 10
@@ -86,8 +86,12 @@ def drawBoundingBoxes(contours, c_frame, features, w_vid, video_writer, past_m_f
             classifier = pickle.load(f)
     
     elif classifier_type == 'kmeans':
-        with open('./pickle/kmeans_' + fname[:-3] + '_' + fname[-2:] + '.pkl', 'rb') as f:
-            classifier = pickle.load(f)
+            with open('./pickle/kmeans_' + fname[:-3] + '_' + fname[-2:] + '.pkl', 'rb') as f:
+                classifier = pickle.load(f)
+
+    elif classifier_type == 'kmeans_kernel':
+            with open('./pickle/kmeans_kernel_' + fname[:-3] + '_' + fname[-2:] + '.pkl', 'rb') as f:
+                classifier = pickle.load(f)
 
     m_features = np.zeros((len(features[0]),2))
 
@@ -153,12 +157,16 @@ def classify(m_features, feature, classifier):
         if err > sensitivity:
             return True
 
+    elif classifier_type == 'kmeans_kernel':
+        _feature = np.reshape(np.linalg.norm(feature), (-1, 1))
+        pred = classifier.predict(_feature.reshape(1, -1))
+        return pred
+
     # Gaussian probability, use mean and variance too
     elif classifier_type == 'gmm' or 'kmeans':
         _feature = np.array(feature)
         pred = classifier.predict(_feature.reshape(1, -1))
         return pred
-
 
 def extract(contours):
     features = []
@@ -186,17 +194,7 @@ def extract(contours):
         features.append([perimeter, area, radius, orientation, aspect_ratio])
     return features
 
-def write_csv(class_stats):
-    import pandas as pd
-    pd.DataFrame(class_stats).iloc[::3].to_csv(
-        './class-stats/' + fname + '-' + classifier_type + '-class_stats_newfeature.csv',
-        sep='\t', index=False,  header=None)
-
-
 def main():
-    # class_stats = kFold(10, classifier_type, fname)
-    # write_csv(class_stats)
-    # raise
     vr = cv2.VideoCapture(fpath)
 
     # # Control whether we write video or not
